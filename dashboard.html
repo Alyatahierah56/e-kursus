@@ -1,0 +1,127 @@
+<!DOCTYPE html> 
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+  <title>Dashboard - e-Kursus Air Kelantan Sdn Bhd</title>
+  <link rel="stylesheet" href="styles.css"> <!-- Pastikan ini merujuk kepada fail styles.css -->
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <img src="logoaksb.png" alt="Logo Air Kelantan Sdn Bhd">
+    </div>
+ 
+    <div class="container">
+        <!-- Butang Log Out dengan id="logoutBtn" -->
+        <a href="login.html" id="logoutBtn" class="btn btn-info btn-lg">
+          <span class="glyphicon glyphicon-log-out"></span> Log out
+        </a>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Content -->
+  <div class="dashboard-container">
+    <h2>Senarai Kursus yang Dihadiri</h2>
+
+    <!-- Form untuk menambah kursus -->
+    <div class="add-course-form">
+      <h3>Tambah Kursus Baru</h3>
+      <form id="course-form">
+        <label for="course-name">Nama Kursus</label>
+        <input type="text" id="course-name" required>
+
+        <label for="course-description">Penerangan Kursus</label>
+        <textarea id="course-description" required></textarea>
+
+        <button type="submit">Tambah Kursus</button>
+      </form>
+    </div>
+
+    <!-- Senarai Kursus -->
+    <div id="courses-list"></div>
+  </div>
+
+  <!-- Firebase SDK (Modular) -->
+  <script type="module">
+    import { auth, db } from './firebase.js'; 
+    import { signOut } from "https://www.gstatic.com/firebasejs/9.21.0/firebase-auth.js";
+    import { collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.21.0/firebase-firestore.js";
+
+    function redirectToLogout() {
+      firebase.auth().signOut();
+      window.location.href = 'login.html'; 
+    }
+
+    async function loadCourses() {
+      const coursesList = document.getElementById('courses-list');
+      coursesList.innerHTML = '';
+
+      const querySnapshot = await getDocs(collection(db, "courses"));
+      querySnapshot.forEach((doc) => {
+        const course = doc.data();
+        const div = document.createElement('div');
+        div.classList.add('course-item');
+        div.innerHTML = `
+          <h3>${course.name}</h3>
+          <p>${course.description}</p>
+          <button class="delete-btn" data-id="${doc.id}">Hapus</button>
+        `;
+        coursesList.appendChild(div);
+      });
+
+      const deleteButtons = document.querySelectorAll('.delete-btn');
+      deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const courseId = button.getAttribute('data-id');
+          deleteCourse(courseId);  
+        });
+      });
+    }
+
+    document.getElementById('course-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const courseName = document.getElementById('course-name').value;
+      const courseDescription = document.getElementById('course-description').value;
+
+      try {
+        await addDoc(collection(db, "courses"), {
+          name: courseName,
+          description: courseDescription,
+          createdAt: serverTimestamp() 
+        });
+        alert("Kursus berjaya ditambah!");
+        loadCourses(); 
+        document.getElementById('course-form').reset(); 
+      } catch (error) {
+        alert("Ralat semasa menambah kursus: " + error.message);
+      }
+    });
+
+    async function deleteCourse(courseId) {
+      const confirmDelete = confirm("Adakah anda pasti ingin memadam kursus ini?");
+      if (confirmDelete) {
+        try {
+          await deleteDoc(doc(db, "courses", courseId));
+          alert("Kursus berjaya dipadam.");
+          loadCourses();  
+        } catch (error) {
+          alert("Ralat: " + error.message);
+        }
+      }
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loadCourses();  
+      } else {
+        window.location.href = 'index.html';  
+      }
+    });
+  </script>
+</body>
+</html>
